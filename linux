@@ -1,0 +1,779 @@
+    LINUX ADMINISTRATION PRACTICALS - FEDORA COMMAND SHEET
+    Based on: TY B.Sc. IT Semester V Linux Administration Practical Manual
+    Environment: Fedora Workstation / Fedora Server (VirtualBox or VMware)
+
+    IMPORTANT
+    ---------
+    1. Use a Fedora VM, not your main Windows installation.
+    2. Take a VM snapshot before storage, firewall, networking, or user-management practicals.
+    3. Commands marked with sudo need an administrator password.
+    4. Replace USERNAME, SERVER_IP, SHARE_NAME, DISK, and paths with your actual values.
+    5. Do not copy commands that format a disk or edit /etc/fstab unless you understand the target.
+    6. Run commands one section at a time. Some practicals require a second Fedora VM or another Linux/NFS/SMB server.
+    7. Fedora uses DNF. The `yum` command may work as a compatibility command, but `dnf` is the native package manager.
+    8. Practical 1's RHEL installation is not a Fedora command practical. Use Fedora ISO to create the VM; the Linux desktop and directory commands below apply after installation.
+
+    PREREQUISITES
+    -------------
+    - Fedora installed and booting successfully in VirtualBox/VMware.
+    - Internet connection in the VM.
+    - A user with sudo privileges.
+    - Terminal access.
+    - Basic commands: pwd, ls, cd, mkdir, touch, cp, mv, rm, cat.
+    - Recommended VM: 2 CPU cores, 4 GB RAM, 25 GB virtual disk.
+    - For storage practical: an extra EMPTY virtual disk is recommended. Never experiment on your real disk.
+    - For network storage: a second VM or a reachable NFS/SMB server.
+    - For SSH: two Linux systems/VMs, or one VM plus another computer.
+    - For local repository: Fedora RPM packages and createrepo_c.
+    - Keep a snapshot before changing system configuration.
+
+    INITIAL FEDORA SETUP
+    --------------------
+    Check Fedora version:
+        cat /etc/fedora-release
+        uname -r
+
+    Update package metadata and installed packages:
+        sudo dnf check-update
+        sudo dnf upgrade --refresh -y
+
+    Install common practical tools:
+        sudo dnf install -y vim nano wget curl git tar gzip bzip2 acl attr \
+          lsof psmisc procps-ng util-linux policycoreutils-python-utils \
+          openssh-clients openssh-server httpd firewalld tuned lvm2
+
+    Enable useful services:
+        sudo systemctl enable --now sshd
+        sudo systemctl enable --now firewalld
+
+    ============================================================
+    PRACTICAL 1 - LINUX INSTALLATION, GUI AND DIRECTORY STRUCTURE
+    ============================================================
+
+    A. VM / Fedora installation preparation
+    - Download the Fedora Workstation ISO from the official Fedora website.
+    - Create a new Linux VM, attach the ISO, and install Fedora.
+    - Select a virtual disk. Do not select or format your computer's physical disk.
+    - Create a normal user and allow administrator privileges.
+
+    B. Display/login manager and desktop environment
+        echo "$XDG_SESSION_TYPE"
+        echo "$XDG_CURRENT_DESKTOP"
+        systemctl status display-manager
+        systemctl get-default
+
+    C. Linux directory structure
+        ls /
+        ls -ld /home /etc /var /usr /tmp /boot /dev /proc /sys
+
+    Meaning:
+        /       root of filesystem
+        /home   users' home directories
+        /etc    system configuration
+        /var    changing data and logs
+        /usr    installed applications and shared files
+        /tmp    temporary files
+        /boot   boot files
+        /dev    device files
+        /proc   process and kernel information
+        /sys    device and kernel information
+
+    D. Filesystem and disk overview
+        lsblk -f
+        df -hT
+        findmnt
+
+    ============================================================
+    PRACTICAL 2 - BASIC SYSTEM COMMANDS AND TEXT FILES
+    ============================================================
+
+    Create practice files:
+        mkdir -p ~/linux-practical/p2
+        cd ~/linux-practical/p2
+        printf "Sujal IT 35000\nRahul HR 25000\nAmit IT 30000\nPriya Sales 28000\n" > employees.txt
+        printf "error: disk full\ninfo: started\nerror: timeout\n" > log.txt
+
+    A. Input/output redirection
+        echo "First line" > output.txt
+        echo "Second line" >> output.txt
+        cat output.txt
+        ls /wrong-path 2> errors.txt
+        cat errors.txt
+        cat employees.txt | grep IT
+
+    B. grep and regular expressions
+        grep "IT" employees.txt
+        grep -i "sujal" employees.txt
+        grep -n "IT" employees.txt
+        grep -v "IT" employees.txt
+        grep "^S" employees.txt
+        grep "0$" employees.txt
+        grep "[0-9]" employees.txt
+        grep "error" log.txt
+
+    C. Login and switch users
+        whoami
+        who
+        id
+        sudo useradd student
+        sudo passwd student
+        su - student
+        whoami
+        exit
+
+    Note: If the user already exists, useradd will report that. Do not create duplicate users.
+    To remove this test user later (only if you created it and no longer need it):
+        sudo userdel -r student
+
+    D. Text-file commands
+        cat employees.txt
+        cut -d ' ' -f 1 employees.txt
+        less employees.txt
+        head -n 2 employees.txt
+        tail -n 2 employees.txt
+        sort employees.txt
+        wc employees.txt
+        wc -l employees.txt
+        grep "IT" employees.txt
+        awk '{print $1, $2}' employees.txt
+        awk '$3 > 30000 {print $1, $3}' employees.txt
+        awk 'BEGIN {print "Employee Report"} {sum += $3} END {print "Total:", sum}' employees.txt
+
+    ============================================================
+    PRACTICAL 3 - FILE MANAGEMENT, LINKS, ARCHIVES, PERMISSIONS
+    ============================================================
+
+    Create a safe working folder:
+        mkdir -p ~/linux-practical/p3
+        cd ~/linux-practical/p3
+        echo "Original file" > original.txt
+        cp original.txt copy.txt
+        mv copy.txt renamed.txt
+        mkdir folder1
+        mv renamed.txt folder1/
+        ls -lR
+
+    A. Hard and soft links
+        echo "Link demonstration" > original.txt
+        ln original.txt hardlink.txt
+        ln -s original.txt softlink.txt
+        ls -li original.txt hardlink.txt softlink.txt
+        cat hardlink.txt
+        cat softlink.txt
+
+    B. Archives and compression
+        tar -cvf backup.tar original.txt hardlink.txt
+        mkdir extracted
+        tar -xvf backup.tar -C extracted
+        gzip -k original.txt
+        gunzip -k original.txt.gz
+        bzip2 -k original.txt
+        bunzip2 -k original.txt.bz2
+        tar -czvf backup.tar.gz original.txt hardlink.txt
+        tar -xzvf backup.tar.gz -C extracted
+        tar -cjvf backup.tar.bz2 original.txt hardlink.txt
+        tar -xjvf backup.tar.bz2 -C extracted
+
+    Note: `-k` keeps the original file. `star` is not installed by default on every Fedora release.
+    If your syllabus specifically requires star, check availability first:
+        dnf info star
+    If available:
+        sudo dnf install -y star
+    Do not assume it is available in every configured repository.
+
+    C. Ownership and basic permissions
+        ls -l original.txt
+        chmod u+x original.txt
+        chmod g+w original.txt
+        chmod o-r original.txt
+        chmod 755 original.txt
+        ls -l original.txt
+        sudo chown student original.txt
+        sudo chgrp student original.txt
+        ls -l original.txt
+
+    D. SUID, SGID and Sticky Bit (safe examples)
+        mkdir shared
+        chmod 1777 shared
+        ls -ld shared
+    Expected ending: drwxrwxrwt
+
+        sudo mkdir /tmp/team-demo
+        sudo chgrp student /tmp/team-demo
+        sudo chmod 2775 /tmp/team-demo
+        ls -ld /tmp/team-demo
+    Expected group permission contains s: drwxrwsr-x
+
+    Check an existing SUID program:
+        ls -l /usr/bin/passwd
+    Look for s in the owner's execute position. Do not add SUID to arbitrary programs.
+
+    E. ACL
+        touch aclfile.txt
+        sudo setfacl -m u:student:rw aclfile.txt
+        getfacl aclfile.txt
+    Remove the specific ACL entry:
+        sudo setfacl -x u:student aclfile.txt
+    Remove all extended ACL entries:
+        sudo setfacl -b aclfile.txt
+
+    F. Default permissions / umask
+        umask
+        umask -S
+        touch umask-file.txt
+        mkdir umask-dir
+        ls -l umask-file.txt
+        ls -ld umask-dir
+    Temporary example for current terminal only:
+        umask 027
+        umask
+
+    G. Extended attributes
+        touch attribute-file.txt
+        setfattr -n user.note -v "Linux practical" attribute-file.txt
+        getfattr -d attribute-file.txt
+        setfattr -x user.note attribute-file.txt
+
+    ============================================================
+    PRACTICAL 4 - USERS, GROUPS AND PERMISSIONS
+    ============================================================
+
+    A. Create and manage a user
+        sudo useradd labuser
+        sudo passwd labuser
+        id labuser
+        getent passwd labuser
+        sudo usermod -c "Lab User" labuser
+        sudo userdel -r labuser
+
+    Note: Run userdel only after you finish testing and only for the test account.
+
+    B. Create and manage a group
+        sudo groupadd labgroup
+        sudo useradd groupuser
+        sudo usermod -aG labgroup groupuser
+        id groupuser
+        getent group labgroup
+        sudo gpasswd -d groupuser labgroup
+        sudo groupdel labgroup
+        sudo userdel -r groupuser
+
+    C. Password aging
+        sudo chage -l student
+        sudo chage -M 90 student
+        sudo chage -W 7 student
+        sudo chage -l student
+
+    D. su, sudo and root
+        whoami
+        id
+        su - student
+        whoami
+        exit
+        sudo whoami
+        sudo -l
+
+    Important: Do not enable direct root login or edit sudoers with a normal text editor.
+    Use `sudo visudo` only when your instructor specifically requires a sudoers change.
+
+    ============================================================
+    PRACTICAL 5 - SOFTWARE MANAGEMENT (DNF/YUM/RPM/LOCAL REPO)
+    ============================================================
+
+    Fedora uses DNF. On many Fedora versions, `yum` is a compatibility command.
+
+    A. Package information and search
+        dnf --version
+        yum --version
+        dnf search httpd
+        dnf info httpd
+        rpm -qa | head
+
+    B. Install, update and remove a package
+        sudo dnf install -y httpd
+        httpd -v
+        sudo dnf check-update
+        sudo dnf upgrade -y
+        sudo dnf remove -y httpd
+
+    C. RPM commands
+        rpm -qa | head
+        rpm -q bash
+        rpm -qi bash
+        rpm -ql bash
+        rpm -qf /usr/bin/bash
+
+    To install a local RPM file (only if you have a compatible trusted RPM file):
+        sudo dnf install ./package-name.rpm
+    To query a downloaded RPM:
+        rpm -qpi package-name.rpm
+        rpm -qpl package-name.rpm
+
+    D. Local filesystem repository (requires RPM files)
+    Create a repository folder and place trusted Fedora-compatible RPM files in it:
+        sudo mkdir -p /var/local/myrepo
+        sudo cp /path/to/*.rpm /var/local/myrepo/
+    Install repository creator:
+        sudo dnf install -y createrepo_c
+    Create repository metadata:
+        sudo createrepo_c /var/local/myrepo
+
+    Create repo configuration:
+        sudo tee /etc/yum.repos.d/local-file.repo > /dev/null <<'EOF'
+    [local-file]
+    name=Local File Repository
+    baseurl=file:///var/local/myrepo
+    enabled=1
+    gpgcheck=0
+    EOF
+
+    Refresh and inspect:
+        sudo dnf clean all
+        sudo dnf makecache
+        dnf repolist
+
+    Note: Replace /path/to/*.rpm with the real directory containing RPM files.
+    For a secure production repository, use package signature checking (gpgcheck=1) and trusted signing keys.
+    Do not download random RPM files from unknown websites.
+
+    ============================================================
+    PRACTICAL 6 - PROCESS MANAGEMENT
+    ============================================================
+
+    A. Process information
+        ps
+        ps -ef
+        ps aux
+        pstree
+        top
+    Exit top with q.
+
+    B. Shell jobs
+        sleep 300 &
+        jobs
+        jobs -l
+        fg
+    Press Ctrl+Z to suspend a foreground job:
+        bg
+        jobs
+    Stop the sleep test:
+        pkill -f "sleep 300"
+
+    C. Process tools
+        pidof systemd
+        pgrep -a sshd
+        uptime
+        free -h
+        vmstat 1 5
+        lsof -i
+
+    D. Identify and stop a test process
+        sleep 500 &
+        echo $!
+        ps -p $! -o pid,comm
+        kill $!
+        pgrep -a sleep
+
+    Use `kill PID` only for a process you started or are authorized to stop.
+    Avoid `kill -9` unless normal termination fails.
+
+    E. top and tuned
+        top
+        systemctl status tuned
+        sudo systemctl enable --now tuned
+        tuned-adm active
+        tuned-adm list
+    To select a profile, choose one shown by `tuned-adm list`, for example:
+        sudo tuned-adm profile balanced
+    The profile name may vary by Fedora release and system.
+
+    ============================================================
+    PRACTICAL 7 - STORAGE, PARTITIONS AND FILESYSTEMS
+    ============================================================
+
+    WARNING: Disk partitioning and formatting can permanently destroy data.
+    Use only an extra EMPTY virtual disk added to your VM. Confirm the device name carefully.
+
+    A. Inspect disks, partitions and filesystems
+        lsblk
+        lsblk -f
+        sudo fdisk -l
+        df -hT
+        findmnt
+        blkid
+
+    B. MBR/GPT information
+        sudo parted -l
+        sudo fdisk -l
+
+    C. SAFE filesystem practice using a disk-image file (does not partition a real disk)
+        mkdir -p ~/linux-practical/p7
+        cd ~/linux-practical/p7
+        truncate -s 512M filesystem-demo.img
+        LOOPDEV=$(sudo losetup --find --show filesystem-demo.img)
+        echo "$LOOPDEV"
+    Create an ext4 filesystem on this disposable loop device:
+        sudo mkfs.ext4 "$LOOPDEV"
+        sudo mkdir -p /mnt/fs-demo
+        sudo mount "$LOOPDEV" /mnt/fs-demo
+        df -hT /mnt/fs-demo
+        echo "Filesystem test" | sudo tee /mnt/fs-demo/test.txt
+        cat /mnt/fs-demo/test.txt
+        sudo umount /mnt/fs-demo
+        sudo losetup -d "$LOOPDEV"
+
+    D. Mount/unmount a filesystem
+    Use the loop-image steps above. Never run mkfs on a device unless you have verified it is the disposable test device.
+
+    E. UUID and labels
+        lsblk -f
+        sudo blkid
+    For a real extra virtual disk only, configure `/etc/fstab` after verifying its UUID.
+    Always test an fstab edit before reboot:
+        sudo mount -a
+    If `mount -a` reports an error, correct the entry before rebooting.
+    Do not copy a made-up UUID into fstab.
+
+    F. Swap overview
+        swapon --show
+        free -h
+        cat /proc/swaps
+    Creating swap partitions requires a dedicated empty disk and instructor supervision.
+
+    G. Logical Volume Management (LVM) - isolated loop-file demonstration
+    This uses a disposable file, not your real disk. Install LVM tools:
+        sudo dnf install -y lvm2
+        cd ~/linux-practical/p7
+        truncate -s 1G lvm-demo.img
+        LOOPDEV=$(sudo losetup --find --show lvm-demo.img)
+        echo "$LOOPDEV"
+    Create the PV, VG and LV on this disposable loop device:
+        sudo pvcreate "$LOOPDEV"
+        sudo vgcreate vg_demo "$LOOPDEV"
+        sudo lvcreate -L 500M -n lv_demo vg_demo
+        sudo mkfs.ext4 /dev/vg_demo/lv_demo
+        sudo mkdir -p /mnt/lvm-demo
+        sudo mount /dev/vg_demo/lv_demo /mnt/lvm-demo
+        df -hT /mnt/lvm-demo
+    Cleanup after practical:
+        sudo umount /mnt/lvm-demo
+        sudo lvremove -y /dev/vg_demo/lv_demo
+        sudo vgremove -y vg_demo
+        sudo pvremove -y "$LOOPDEV"
+        sudo losetup -d "$LOOPDEV"
+        rm -f lvm-demo.img
+
+    H. Swap overview and safe swap-file practice
+        swapon --show
+        free -h
+        cat /proc/swaps
+    Create a temporary 512 MB swap file (only if your VM has enough free disk space):
+        sudo fallocate -l 512M /swapfile-practical
+        sudo chmod 600 /swapfile-practical
+        sudo mkswap /swapfile-practical
+        sudo swapon /swapfile-practical
+        swapon --show
+    Disable and remove it after the demonstration:
+        sudo swapoff /swapfile-practical
+        sudo rm -f /swapfile-practical
+
+    I. vfat, ext4 and xfs
+    Check filesystem tools:
+        command -v mkfs.vfat
+        command -v mkfs.ext4
+        command -v mkfs.xfs
+    Install missing tools if available:
+        sudo dnf install -y dosfstools e2fsprogs xfsprogs
+    Formatting commands (ONLY on a disposable loop device or confirmed empty test partition):
+        sudo mkfs.vfat /dev/LOOP_DEVICE
+        sudo mkfs.ext4 /dev/LOOP_DEVICE
+        sudo mkfs.xfs /dev/LOOP_DEVICE
+    Replace /dev/LOOP_DEVICE with the verified test device. These commands erase the target.
+
+    ============================================================
+    PRACTICAL 8 - NETWORK CONFIGURATION
+    ============================================================
+
+    A. Interfaces and addresses
+        ip link
+        ip addr
+        ip route
+        hostnamectl
+        nmcli device status
+
+    B. Validate network configuration
+        ping -c 4 127.0.0.1
+        ping -c 4 1.1.1.1
+        getent hosts fedoraproject.org
+        resolvectl status
+    If resolvectl is unavailable:
+        cat /etc/resolv.conf
+
+    C. NetworkManager with nmcli / nmtui
+        nmcli connection show
+        nmcli device status
+        nmtui
+
+    D. IPv4 and IPv6 overview
+        ip -4 addr
+        ip -6 addr
+        ip -4 route
+        ip -6 route
+
+    For a temporary address on a test interface (replace interface name; may disrupt connectivity):
+        sudo ip addr add 192.0.2.10/24 dev INTERFACE
+    Remove it:
+        sudo ip addr del 192.0.2.10/24 dev INTERFACE
+
+    E. Hostname and DNS
+        hostname
+        hostnamectl
+        getent hosts example.com
+        resolvectl query example.com
+
+    Do not overwrite DNS or NetworkManager configuration unless your instructor provides the correct network values.
+
+    ============================================================
+    PRACTICAL 9 - SSH AND KEY-BASED AUTHENTICATION
+    ============================================================
+
+    Requires a second Linux system/VM or a remote host.
+
+    A. SSH service on Fedora server
+        sudo dnf install -y openssh-server
+        sudo systemctl enable --now sshd
+        systemctl status sshd
+        hostname -I
+
+    B. Connect from client
+        ssh USERNAME@SERVER_IP
+
+    C. Generate an SSH key with passphrase
+        ssh-keygen -t ed25519
+    Press Enter for the default file location and enter a passphrase when prompted.
+
+    D. Copy public key to remote system
+        ssh-copy-id USERNAME@SERVER_IP
+        ssh USERNAME@SERVER_IP
+
+    E. Related utilities
+        ssh -V
+        scp file.txt USERNAME@SERVER_IP:~
+        sftp USERNAME@SERVER_IP
+
+    Never share your private key file (usually ~/.ssh/id_ed25519). Share only the .pub public key.
+
+    ============================================================
+    PRACTICAL 10 - APACHE WEB SERVER AND VIRTUAL HOST
+    ============================================================
+
+    A. Install and start Apache
+        sudo dnf install -y httpd
+        sudo systemctl enable --now httpd
+        systemctl status httpd
+        httpd -v
+
+    B. Create a simple webpage
+        echo '<h1>Fedora Apache Practical</h1>' | sudo tee /var/www/html/index.html
+        curl http://localhost
+
+    C. Apache configuration files
+        sudo apachectl configtest
+        ls /etc/httpd/
+        ls /etc/httpd/conf.d/
+
+    D. Virtual host
+    Create a test document root:
+        sudo mkdir -p /var/www/site1
+        echo '<h1>Site One</h1>' | sudo tee /var/www/site1/index.html
+
+    Create virtual-host configuration:
+        sudo tee /etc/httpd/conf.d/site1.conf > /dev/null <<'EOF'
+    <VirtualHost *:80>
+        ServerName site1.local
+        DocumentRoot /var/www/site1
+        <Directory /var/www/site1>
+            Require all granted
+        </Directory>
+    </VirtualHost>
+    EOF
+
+    Check and reload:
+        sudo apachectl configtest
+        sudo systemctl reload httpd
+
+    Local test:
+        curl -H 'Host: site1.local' http://127.0.0.1
+
+    For access from another computer, configure firewall and DNS/hosts appropriately. Do not expose a test server to the public internet without approval.
+
+    ============================================================
+    PRACTICAL 11 - FIREWALL
+    ============================================================
+
+    Fedora normally uses firewalld. Check status:
+        sudo systemctl enable --now firewalld
+        sudo firewall-cmd --state
+        sudo firewall-cmd --get-active-zones
+        sudo firewall-cmd --list-all
+
+    A. Allow Apache HTTP service
+        sudo firewall-cmd --add-service=http
+        sudo firewall-cmd --runtime-to-permanent
+        sudo firewall-cmd --list-services
+
+    Remove HTTP rule if no longer required:
+        sudo firewall-cmd --remove-service=http
+        sudo firewall-cmd --runtime-to-permanent
+
+    B. iptables compatibility
+        iptables --version
+        sudo iptables -L -n -v
+
+    Note: Fedora uses firewalld/nftables by default. Do not flush iptables rules or disable the firewall on a connected machine. If the practical specifically requires iptables rule creation, do it only in an isolated lab VM with instructor guidance.
+
+    ============================================================
+    PRACTICAL 12 - NETWORK STORAGE (NFS / CIFS / AUTOMOUNT)
+    ============================================================
+
+    Requires a second machine/server that exports an NFS or SMB share.
+    Do not expect the client commands to work until a server/share exists.
+
+    A. NFS client tools
+        sudo dnf install -y nfs-utils
+        showmount -e SERVER_IP
+
+    Mount an existing NFS export (replace values):
+        sudo mkdir -p /mnt/nfs-demo
+        sudo mount -t nfs SERVER_IP:/EXPORT_PATH /mnt/nfs-demo
+        findmnt /mnt/nfs-demo
+        sudo umount /mnt/nfs-demo
+
+    B. CIFS/SMB client tools
+        sudo dnf install -y cifs-utils
+        sudo mkdir -p /mnt/cifs-demo
+
+    Mount an existing SMB share (replace values; prompted for password):
+        sudo mount -t cifs //SERVER_IP/SHARE_NAME /mnt/cifs-demo -o username=USERNAME
+        findmnt /mnt/cifs-demo
+        sudo umount /mnt/cifs-demo
+
+    C. Persistent mount through fstab
+    First obtain the exact server export/share and credentials from the administrator.
+    Back up fstab:
+        sudo cp /etc/fstab /etc/fstab.backup
+    Do not paste a guessed fstab line. Use the correct server path, mount point, filesystem type and options.
+    After a carefully prepared entry, test:
+        sudo mount -a
+        findmnt
+
+    D. Automount
+    Automount configuration depends on the NFS/SMB server and systemd mount/automount unit names.
+    Check systemd automount documentation or follow the exact instructor-provided server path. Do not create an automount entry with placeholder values.
+
+    ============================================================
+    PRACTICAL 13 - SHELL SCRIPTING
+    ============================================================
+
+    A. Create and run a script
+        mkdir -p ~/linux-practical/p13
+        cd ~/linux-practical/p13
+        nano system-info.sh
+
+    Paste this script:
+        #!/bin/bash
+        echo "===== SYSTEM INFORMATION ====="
+        echo "User: $(whoami)"
+        echo "Date: $(date)"
+        echo "Hostname: $(hostname)"
+        echo "Kernel: $(uname -r)"
+        echo "Uptime:"
+        uptime
+        echo "Disk usage:"
+        df -h
+        echo "Memory:"
+        free -h
+
+    Save and run:
+        chmod +x system-info.sh
+        ./system-info.sh
+
+    B. Monitor disk usage
+    Create:
+        nano disk-check.sh
+
+    Paste:
+        #!/bin/bash
+        echo "Disk usage report"
+        df -h
+
+    Run:
+        chmod +x disk-check.sh
+        ./disk-check.sh
+
+    C. Process monitoring
+        ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head
+        ps -eo pid,comm,%cpu,%mem --sort=-%mem | head
+
+    ============================================================
+    PRACTICAL 14 - SCHEDULING TASKS (CRON AND AT)
+    ============================================================
+
+    A. Cron recurring tasks
+    Check cron service:
+        systemctl status crond
+    Enable it:
+        sudo systemctl enable --now crond
+
+    Edit your user's crontab:
+        crontab -e
+
+    Example: run a date command every minute and append output to a file:
+        * * * * * date >> /home/USERNAME/cron-log.txt
+
+    Replace USERNAME with your Linux username. Save and exit the editor.
+    View jobs:
+        crontab -l
+    Remove all jobs for your user (careful):
+        crontab -r
+
+    Cron format:
+        minute hour day-of-month month day-of-week command
+        * * * * * means every minute.
+
+    B. At one-time scheduling
+    Install at:
+        sudo dnf install -y at
+    Enable service:
+        sudo systemctl enable --now atd
+
+    Schedule a one-time task:
+        echo 'date >> /tmp/at-demo.txt' | at now + 2 minutes
+    List jobs:
+        atq
+    Check output after the scheduled time:
+        cat /tmp/at-demo.txt
+
+    Remove a queued job:
+        atrm JOB_NUMBER
+
+    ============================================================
+    QUICK CHECKLIST
+    ============================================================
+
+    [ ] Practical 1: Fedora VM, GUI, directories and filesystems
+    [ ] Practical 2: Redirection, grep, users, text commands and awk
+    [ ] Practical 3: File management, links, archives, permissions, ACL, umask, attributes
+    [ ] Practical 4: Users, groups, password aging, sudo and su
+    [ ] Practical 5: DNF/YUM, RPM, updates and local repository
+    [ ] Practical 6: Processes, jobs, top, tuned and kill
+    [ ] Practical 7: MBR/GPT concepts, partitions, filesystems, mount, UUID, swap
+    [ ] Practical 8: Interfaces, IP, NetworkManager, DNS and hostname
+    [ ] Practical 9: SSH, remote access and key authentication
+    [ ] Practical 10: Apache, configuration and virtual host
+    [ ] Practical 11: Firewall and iptables overview
+    [ ] Practical 12: NFS, CIFS, fstab and automount
+    [ ] Practical 13: Shell scripts and system information
+    [ ] Practical 14: Cron and at scheduling
+
+    END OF FILE
